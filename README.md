@@ -1,22 +1,22 @@
-# Fin Whale Detection
+# Fin Whale Detection in DAS
 
-Reproduction of the pipeline from “Automated Detection of Fin Whales with Distributed Acoustic Sensing in the Arctic and Mediterranean.”
+Reproduction of the pipeline from article “Automated Detection of Fin Whales with Distributed Acoustic Sensing in the Arctic and Mediterranean.”
 
 Authors: Khanh Truong, Jo Eidsvik, Robin Andre Rørstadbotnen, Jan Petter Morten, Laurine Andres, Anthony Sladen.
 
 ## Installation
-Create an isolated environment (Python 3.12) and install the package:
+Create an isolated environment (Python 3.10) and install the package:
 
 Conda:
 ```bash
-conda create --name dasly-env python=3.12
+conda create --name dasly-env python=3.10
 conda activate dasly-env
 pip install -e .
 ```
 
 venv (no conda):
 ```bash
-python3.12 -m venv .venv
+python3.10 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install --upgrade pip
 pip install -e .
