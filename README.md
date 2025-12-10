@@ -1,0 +1,40 @@
+# Fin Whale Detection
+
+Reproduction of the pipeline from “Automated Detection of Fin Whales with Distributed Acoustic Sensing in the Arctic and Mediterranean.”
+
+Authors: Khanh Truong, Jo Eidsvik, Robin Andre Rørstadbotnen, Jan Petter Morten, Laurine Andres, Anthony Sladen.
+
+## Installation
+Create an isolated environment (Python 3.12) and install the package:
+
+Conda:
+```bash
+conda create --name dasly-env python=3.12
+conda activate dasly-env
+pip install -e .
+```
+
+venv (no conda):
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install --upgrade pip
+pip install -e .
+```
+
+## Notebooks
+Example workflows are in `notebooks/` (e.g., `dbscan.ipynb`, `ht.ipynb`, `tm.ipynb`, `yolo.ipynb`). Run after installing the package so imports resolve.
+
+## Data
+- Included: a 1-minute segment of the Svalbard DAS recording (UTC 2022-08-22 12:25:09), high-pass filtered at 1 Hz, located in `data/`. This is sufficient to run the notebooks and demonstrate the pipeline.
+- Not included: the full Svalbard dataset and the Italy-Monaco dataset used in the paper (access-restricted).
+- Alternative public data: a related Svalbard DAS dataset (Rørstadbotnen et al., 2023) is available at https://doi.org/10.18710/Q8OSON. It is in MATLAB (.mat) format rather than HDF5, so you would need to adapt the loading code to use it.
+
+## Models
+- A pretrained fin-whale detector is available at `models/fin_whale_detection_weights.pt`.
+
+## License
+This project is released under the MIT License. See `LICENSE` for details.
+
+## Contact
+For inquiries, please contact **khanh.p.d.truong@ntnu.no** or **ktruong.me@gmail.com**.

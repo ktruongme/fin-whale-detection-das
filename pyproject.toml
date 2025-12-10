@@ -1,0 +1,39 @@
+[project]
+name = "dasly"
+version = "2.0.0"
+description = "A package to load, process and analyze Distributed Acoustic Sensing data"
+authors = [
+    { name = "Karl (Khanh) Truong", email = "khanh.p.d.truong@ntnu.no" },
+    { name = "Karl (Khanh) Truong", email = "ktruong.me@gmail.com" }
+]
+license = { text = "MIT" }
+readme = "README.md"
+keywords = ["Distributed Acoustic Sensing", "DAS", "signal", "acoustic"]
+requires-python = ">=3.10"
+dependencies = [
+    "h5py",
+    "matplotlib",
+    "numba",
+    "numpy",
+    "opencv-python",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+    "seaborn",
+    "torch",
+    "ultralytics"
+]
+
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project.scripts]
+dasly = "dasly.cli:app"
+
+
+
+[tool.flit.module]
+name = "dasly"
+directory = "src"
+include = ["dasly/models/*"]
