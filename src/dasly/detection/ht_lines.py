@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 def compute_hough_theta(
     dt: float,
-    ds: float,
-    dx: float,
+    dn: float,
+    dxn: float,
     target_velocity: float,
     velocity_res: float
 ) -> float:
@@ -41,8 +41,8 @@ def compute_hough_theta(
 
     Args:
         dt (float): Temporal sampling period.
-        ds (float): Spatial channnel sampling period.
-        dx (float): Channel spacing, in meters.
+        dn (float): Spatial channnel sampling period.
+        dxn (float): Channel spacing, in meters.
         target_velocity (float): Desired velocity to be tracked, in m/s.
         velocity_res (float): Desired velocity resolution, in m/s.
 
@@ -50,13 +50,13 @@ def compute_hough_theta(
         float: Theta for Hough transform
     """
     # Convert target velocity to channel per second
-    target_velocity_c = target_velocity / dx
+    target_velocity_c = target_velocity / dxn
     target_velocity_c = np.abs(target_velocity_c)
     # Angle of target velocity (radians)
-    angle1 = math.atan((1 / target_velocity_c) * (ds / dt))
+    angle1 = math.atan((1 / target_velocity_c) * (dn / dt))
     # Angle of target velocity + resolution (radians)
     angle2 = math.atan(
-        (1 / (target_velocity_c + velocity_res)) * (ds / dt))
+        (1 / (target_velocity_c + velocity_res)) * (dn / dt))
     # Calculate theta (radians)
     theta = np.abs(angle1 - angle2)
     return theta
@@ -64,8 +64,8 @@ def compute_hough_theta(
 
 def compute_hough_line_length(
     dt: float,
-    ds: float,
-    dx: float,
+    dn: float,
+    dxn: float,
     target_velocity: float,
     len_m: float = None,
     len_s: float = None,
@@ -86,8 +86,8 @@ def compute_hough_line_length(
 
     Args:
         dt (float): Temporal sampling period.
-        ds (float): Spatial channnel sampling period.
-        dx (float): Channel spacing, in meters.
+        dn (float): Spatial channnel sampling period.
+        dxn (float): Channel spacing, in meters.
         target_velocity (float): Desired velocity to be tracked, in m/s.
         len_m (float, optional): Length of the signal to be tracked in meters.
             Defaults to None.
@@ -103,15 +103,15 @@ def compute_hough_line_length(
     ):
         raise ValueError("Either meters or seconds must be provided.")
     # Convert target velocity to channel per second
-    target_velocity_c = target_velocity / dx
+    target_velocity_c = target_velocity / dxn
     # Calculate the length in channel and seconds
     if len_m:
-        len_c = len_m / dx  # Convert length in meters to channel
+        len_c = len_m / dxn  # Convert length in meters to channel
         len_s = len_c / target_velocity_c
     else:
         len_c = target_velocity_c * len_s
     len_pixel = np.sqrt(
-        (len_c / ds) ** 2 +
+        (len_c / dn) ** 2 +
         (len_s / dt) ** 2
     )
     return len_pixel
@@ -475,8 +475,8 @@ def compute_first_endpoints_manhattan_distances(
 def compute_harmonic_distance(
     distance: np.ndarray,
     dt: float,
-    ds: float,
-    dx: float,
+    dn: float,
+    dxn: float,
     target_velocity: float,
 ) -> np.ndarray:
     """Calculate the harmonic distance between each pair of points in the
@@ -489,8 +489,8 @@ def compute_harmonic_distance(
         distance (np.ndarray): Array of pairwise Manhattan distances. Shape
             (N, N, 2) where N is the number of line segments.
         dt (float): Temporal sampling period.
-        ds (float): Spatial channel sampling period.
-        dx (float): Channel spacing, in meters.
+        dn (float): Spatial channel sampling period.
+        dxn (float): Channel spacing, in meters.
         target_velocity (float): Desired velocity to be tracked, in m/s.
 
     Returns:
@@ -508,7 +508,7 @@ def compute_harmonic_distance(
     x = distance[..., 0]  # x distances
     y = distance[..., 1]  # y distances
 
-    x_scaled = x * (1 / dt) / (target_velocity / ds / dx)
+    x_scaled = x * (1 / dt) / (target_velocity / dn / dxn)
 
     # Calculate the distances
     distance = np.sqrt(x_scaled ** 2 + y ** 2)
@@ -579,9 +579,9 @@ def group_pairs(
 
 def infer_lines_info(
     lines_coords: np.ndarray[int],
-    ds: float,
+    dn: float,
     dt: float,
-    dx: float,
+    dxn: float,
     timestamps: np.ndarray[float],
     channels: np.ndarray[float]
 ) -> pd.DataFrame:
@@ -590,9 +590,9 @@ def infer_lines_info(
     Args:
         lines_coords (np.ndarray[int]): Coordinates of the detected lines,
             resulted from Hough transform, shape (N, 4).
-        ds (float): Spatial channnel sampling period.
+        dn (float): Spatial channnel sampling period.
         dt (float): Temporal sampling period.
-        dx (float): Channel spacing, in meters.
+        dxn (float): Channel spacing, in meters.
         timestamps (np.ndarray[float]): Timestamps of the data.
         channels (np.ndarray[float]): Spatial channels of the data.
 
@@ -602,7 +602,7 @@ def infer_lines_info(
     # Convert the coordinates to spatial and temporal distances
     lines = lines_coords.copy()
     lines = lines.astype(float)  # Convert to float for calculations
-    lines[:, [0, 2]] *= ds  # Convert spatial index to channel distance
+    lines[:, [0, 2]] *= dn  # Convert spatial index to channel distance
     lines[:, [0, 2]] += channels[0]  # Convert spatial idx to channels
     lines[:, [1, 3]] *= dt  # Convert temporal index to temporal distance
     lines[:, [1, 3]] += timestamps[0]  # Convert temporal index to timestamps
@@ -615,7 +615,7 @@ def infer_lines_info(
         y_0 = lines[:, 1] - slope * lines[:, 0]  # temporal at channel 0
         y_first = slope * channels[0] + y_0  # temporal at first channel
         y_last = slope * channels[-1] + y_0  # temporal at last channel
-        velocity = (1 / slope) * dx
+        velocity = (1 / slope) * dxn
 
     # Swap y_first and y_last to ensure t1_edge <= t2_edge
     t1_edge = np.minimum(y_first, y_last)
@@ -634,9 +634,9 @@ def infer_lines_info(
         'y1n': lines_coords[:, 1] / len(timestamps),
         'x2n': lines_coords[:, 2] / len(channels),
         'y2n': lines_coords[:, 3] / len(timestamps),
-        's1': lines[:, 0],
+        'n1': lines[:, 0],
         't1': lines[:, 1],
-        's2': lines[:, 2],
+        'n2': lines[:, 2],
         't2': lines[:, 3],
         't1_edge': t1_edge,
         't2_edge': t2_edge,
@@ -783,8 +783,8 @@ def build_boxes_from_lines(
         boxesn=boxesn,
         t_start=timestamps[0],
         t_end=timestamps[-1],
-        s_start=channels[0],
-        s_end=channels[-1],
+        n_start=channels[0],
+        n_end=channels[-1],
     )
 
     boxesp = box_saver.cast_box_times_to_datetime64(boxes=boxesd)
@@ -849,9 +849,9 @@ class DASHoughLines:
         #######################################################################
         lines = infer_lines_info(
             lines_coords=lines_coords,
-            ds=self.meta.ds,
+            ds=self.meta.dn,
             dt=self.meta.dt,
-            dx=self.meta.dx,
+            dx=self.meta.dxn,
             timestamps=self.meta.timestamps,
             channels=self.meta.channels
         )
@@ -933,9 +933,9 @@ class DASHoughLines:
 
         lines_info = infer_lines_info(
             lines_coords=lines_agg[['x1', 'y1', 'x2', 'y2']].to_numpy(),
-            ds=self.meta.ds,
+            ds=self.meta.dn,
             dt=self.meta.dt,
-            dx=self.meta.dx,
+            dx=self.meta.dxn,
             timestamps=self.meta.timestamps,
             channels=self.meta.channels
         )
@@ -946,7 +946,7 @@ class DASHoughLines:
                        'velocity_min',
                        'velocity_max',
                        'num_lines']],
-            ], axis=1)
+        ], axis=1)
 
         self.meta.update(lines=lines)
         return self
@@ -983,8 +983,8 @@ class DASHoughLines:
         first_endpoints_distance_matrix = compute_harmonic_distance(
             distance=xy_first_endpoints_distance_matrix,
             dt=self.meta.dt,
-            ds=self.meta.ds,
-            dx=self.meta.dx,
+            ds=self.meta.dn,
+            dx=self.meta.dxn,
             target_velocity=target_velocity
         )
 

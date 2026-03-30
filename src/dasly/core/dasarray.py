@@ -12,16 +12,13 @@ import numpy as np
 
 from ..filters.filter import DASFilter
 from ..loader.loader import DASLoader
-from ..plotting.plotting import DASPlotter
 from ..filters.resizer import DASResizer
-from ..detection.ht_lines import DASHoughLines
 from ..detection.yolo import DASYolo
-from ..detection.dbscan import DASDbscan
-from ..detection.tm import DASTemplate
 
 
 class DASMeta:
     """Class to handle metadata with dot notation access."""
+
     def __init__(self, **kwargs: Any) -> None:
         self.__dict__.update(kwargs)
 
@@ -52,8 +49,7 @@ class DASMeta:
 
 class DASArray(
     np.ndarray,
-    DASLoader, DASFilter, DASPlotter,
-    DASResizer, DASHoughLines, DASYolo, DASDbscan, DASTemplate
+    DASLoader, DASFilter, DASResizer, DASYolo
 ):
     """Custom DAS class that inherits from np.ndarray.
 
@@ -73,10 +69,10 @@ class DASArray(
         Returns:
             DASArray: New instance of the class.
         """
-        # Step 1: Convert input array to ndarray
+        # Convert input array to ndarray
         obj = np.asarray(input_array).view(cls)
 
-        # Step 2: Assign the metadata dictionary
+        # Assign the metadata dictionary
         obj.meta = DASMeta()
         obj.meta.update(**meta_attrs)
 
@@ -89,3 +85,48 @@ class DASArray(
 
         # Ensure meta is propagated
         self.meta = getattr(obj, 'meta', DASMeta())
+
+    def __reduce__(self):
+        """Customize pickling to include metadata."""
+        reduce_tuple = super().__reduce__()
+        if len(reduce_tuple) != 3:
+            return reduce_tuple
+
+        reconstruct, args, state = reduce_tuple
+        meta_state = getattr(self, 'meta', None)
+        meta_dict = dict(meta_state.__dict__) if meta_state is not None else {}
+        return reconstruct, args, (state, meta_dict)
+
+    def __setstate__(self, state) -> None:
+        """Restore ndarray state and attached metadata."""
+        meta_dict = {}
+        base_state = state
+
+        if (isinstance(state, tuple) and len(state) == 2
+                and isinstance(state[1], dict)):
+            base_state, meta_dict = state
+
+        super().__setstate__(base_state)
+        self.meta = DASMeta()
+        self.meta.update(**meta_dict)
+
+    def to_numpy(
+        self,
+        dtype: np.dtype | None = None,
+        copy: bool = False
+    ) -> np.ndarray:
+        """Return a NumPy array view of the data.
+
+        Args:
+            dtype (np.dtype | None): Optional dtype to cast to.
+            copy (bool): Whether to return a copy. Defaults to False.
+
+        Returns:
+            np.ndarray: NumPy array representation of the data.
+        """
+        array = np.asarray(self)
+        if dtype is not None:
+            return array.astype(dtype, copy=copy)
+        if copy:
+            return array.copy()
+        return array

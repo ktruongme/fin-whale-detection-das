@@ -17,11 +17,15 @@ dependencies = [
     "numpy",
     "opencv-python",
     "pandas",
+    "psycopg2-binary",
     "scikit-learn",
     "scipy",
     "seaborn",
+    "sqlalchemy>=2.0",
     "torch",
-    "ultralytics"
+    "typer>=0.15.2",
+    "ultralytics",
+    "watchdog"
 ]
 
 [build-system]

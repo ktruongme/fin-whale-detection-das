@@ -69,7 +69,7 @@ def _default_initial_guess(
     x_coords, y_coords = extract_binary_coords(binary_array)
 
     if x_coords.size == 0:
-        return (FALLBACK_A_GUESS, FALLBACK_B_GUESS, 
+        return (FALLBACK_A_GUESS, FALLBACK_B_GUESS,
                 FALLBACK_H_GUESS, FALLBACK_K_GUESS)
 
     # 1. h (Horizontal Center): Median of X is usually safe
@@ -254,16 +254,16 @@ def fit_multiple_hyperbolas_least_squares(
 
 def derive_hyperbola_metrics(
     hyperbolas: List[HyperbolaFitResult],
-    ds: float,
-    dx: float
+    dn: float,
+    dxn: float
 ) -> dict:
     """Calculate source distances and residuals from a list of hyperbolas.
 
     Args:
         hyperbolas (List[HyperbolaFitResult]): List of HyperbolaFitResult
             objects.
-        ds (float): Spatial sampling period in channels.
-        dx (float): Channel spacing in meters.
+        dn (float): Spatial sampling period in channels.
+        dxn (float): Channel spacing in meters.
 
     Returns:
         dict: Dictionary containing source distances, RMSE norms, and MAE
@@ -276,7 +276,7 @@ def derive_hyperbola_metrics(
     for hyperbola in hyperbolas:
         a, _, _, _ = hyperbola.params
         rmse_norm, mae_norm = hyperbola.errors
-        source_distance = np.abs(a) * ds * dx
+        source_distance = np.abs(a) * dn * dxn
 
         source_distances.append(source_distance)
         rmse_norms.append(rmse_norm)

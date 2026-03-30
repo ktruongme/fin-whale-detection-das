@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 def create_v_template(
     v: float,
     dt: float,
-    dx: float,
+    dxn: float,
     t: float = None,
     x: float = None,
     t_width: float = None,
@@ -28,7 +28,7 @@ def create_v_template(
     Args:
         v (float): Velocity in m/s.
         dt (float): Temporal sampling period in seconds.
-        dx (float): Spatial sampling period in meters.
+        dxn (float): Spatial sampling period in meters.
         t (float, optional): Time duration of the template. Either 't' or 'x'
             must be provided, but not both. Defaults to None.
         x (float, optional): Spatial extent of the template. Either 't' or 'x'
@@ -58,10 +58,10 @@ def create_v_template(
         # Number of time samples
         T = int(np.ceil(t / dt)) + 1
         # Spatial extent from -v*t to +v*t
-        X = int(np.ceil((2 * v * t) / dx)) + 1
+        X = int(np.ceil((2 * v * t) / dxn)) + 1
         x = 2 * v * t
     else:
-        X = int(np.ceil(x / dx)) + 1
+        X = int(np.ceil(x / dxn)) + 1
         T = int(np.ceil(x / (2 * v * dt))) + 1
         t = (T - 1) * dt
 
@@ -75,7 +75,7 @@ def create_v_template(
 
     # Create grid of time and space
     t_vals = np.linspace(0, t, T).reshape(T, 1)  # Shape (T, 1)
-    x_centered = np.linspace(-x/2, x/2, X).reshape(1, X)  # Shape (1, X)
+    x_centered = np.linspace(-x / 2, x / 2, X).reshape(1, X)  # Shape (1, X)
 
     # Calculate the two edges of the "V"
     # Edge 1: x = v * t
@@ -275,8 +275,8 @@ class DASTemplate:
             boxesn=adjusted_boxesn,
             t_start=self.meta.timestamps[0],
             t_end=self.meta.timestamps[-1],
-            s_start=self.meta.channels[0],
-            s_end=self.meta.channels[-1],
+            n_start=self.meta.channels[0],
+            n_end=self.meta.channels[-1],
         )
 
         boxesp = box_saver.cast_box_times_to_datetime64(boxes=boxesd)

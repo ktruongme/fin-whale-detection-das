@@ -220,8 +220,8 @@ def fk_filter_real(
     v_min: float,
     v_max: float,
     dt: float,
-    ds: float,
-    dx: float,
+    dn: float,
+    dxn: float,
     num_workers: int = -1
 ) -> np.ndarray:
     """Apply a FK filter to the data using real FFT.
@@ -236,8 +236,8 @@ def fk_filter_real(
         v_min (float): Minimum velocity (m/s).
         v_max (float): Maximum velocity (m/s).
         dt (float): Temporal sampling period (s).
-        ds (float): Spatial sampling period (channels).
-        dx (float): Channel spacing in meters.
+        dn (float): Spatial sampling period (channels).
+        dxn (float): Channel spacing in meters.
         num_workers (int, optional): Number of workers for parallel processing.
             If negative, the value wraps around from os.cpu_count(). Based on
             experience, the optimal number of workers is usually fewer than
@@ -256,7 +256,7 @@ def fk_filter_real(
 
     # FFT in space (full spectrum)
     data_fft_tf = fft(data_fft_t, axis=1, workers=num_workers)
-    k_axis = fftfreq(Nx, d=ds * dx).astype(np.float32)  # Shape (Nx,)
+    k_axis = fftfreq(Nx, d=dn * dxn).astype(np.float32)  # Shape (Nx,)
 
     # Shift spatial axis for easier masking
     data_fft_shift = fftshift(data_fft_tf, axes=(1,))
@@ -357,8 +357,8 @@ class DASFilter:
             v_min=v_min,
             v_max=v_max,
             dt=self.meta.dt,
-            ds=self.meta.ds,
-            dx=self.meta.dx,
+            dn=self.meta.dn,
+            dxn=self.meta.dxn,
             num_workers=num_workers
         )
         result = self.__class__(filtered_data)

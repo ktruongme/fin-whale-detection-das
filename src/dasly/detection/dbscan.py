@@ -168,7 +168,7 @@ class DASDbscan:
         # (1/dt) / (1500/dx/ds).
         scaled_points[:, 1] *= (
             (1 / self.meta.dt) /
-            (target_velocity / self.meta.dx / self.meta.ds))
+            (target_velocity / self.meta.dxn / self.meta.dn))
 
         if len(scaled_points) > 50_000:
             raise ValueError(f"The number of points ({len(scaled_points):,}) "
@@ -196,8 +196,8 @@ class DASDbscan:
             boxesn=boxesn,
             t_start=self.meta.timestamps[0],
             t_end=self.meta.timestamps[-1],
-            s_start=self.meta.channels[0],
-            s_end=self.meta.channels[-1],
+            n_start=self.meta.channels[0],
+            n_end=self.meta.channels[-1],
         )
 
         boxesp = box_saver.cast_box_times_to_datetime64(boxes=boxesd)
