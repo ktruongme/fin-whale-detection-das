@@ -34,10 +34,3 @@ build-backend = "flit_core.buildapi"
 
 [project.scripts]
 dasly = "dasly.cli:app"
-
-
-
-[tool.flit.module]
-name = "dasly"
-directory = "src"
-include = ["dasly/models/*"]

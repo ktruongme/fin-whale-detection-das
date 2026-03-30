@@ -1,3 +1,7 @@
+from contextlib import nullcontext
+from importlib.resources import as_file, files
+from pathlib import Path
+
 from ..core.dasarray import DASArray
 from ..fitting.hyperbola_fitter import (
     fit_multiple_hyperbolas_least_squares,
@@ -5,6 +9,19 @@ from ..fitting.hyperbola_fitter import (
 )
 from .box_saver import save_to_db, build_box_df
 from ..loader.fsearcher import parse_file_path
+
+DEFAULT_MODEL_FILENAME = "fin_whale_detection_weights.pt"
+LEGACY_DEFAULT_MODEL_PATH = str(Path("models") / DEFAULT_MODEL_FILENAME)
+
+
+def _resolve_model_path(model_path: str | None):
+    if model_path is not None:
+        candidate = Path(model_path).expanduser()
+        if candidate.exists() or model_path != LEGACY_DEFAULT_MODEL_PATH:
+            return nullcontext(str(candidate))
+
+    packaged_model = files("dasly.models").joinpath(DEFAULT_MODEL_FILENAME)
+    return as_file(packaged_model)
 
 
 def process_hdf5(
@@ -24,7 +41,7 @@ def process_hdf5(
     train_physical_width: float,
     train_physical_height: float,
     grayscale_by_column: bool,
-    model_path: str,
+    model_path: str | None,
     yolo_iou: float,
     hyperbolas_num_points: int,
     hyperbolas_by_channel: bool,
@@ -36,16 +53,17 @@ def process_hdf5(
         .rms(window_size_second=rms_window_size)
     )
 
-    das = (
-        das_rms
-        .match_train_scale(
-            train_dn=train_physical_width / train_width,
-            train_dt=train_physical_height / train_height
+    with _resolve_model_path(model_path) as resolved_model_path:
+        das = (
+            das_rms
+            .match_train_scale(
+                train_dn=train_physical_width / train_width,
+                train_dt=train_physical_height / train_height
+            )
+            .grayscale_transform(by_column=grayscale_by_column)
+            .rgb_transform()
+            .yolo(model=str(resolved_model_path), iou=yolo_iou)
         )
-        .grayscale_transform(by_column=grayscale_by_column)
-        .rgb_transform()
-        .yolo(model=model_path, iou=yolo_iou)
-    )
 
     hyperbolas = fit_multiple_hyperbolas_least_squares(
         array=das_rms,

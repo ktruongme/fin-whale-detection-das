@@ -22,6 +22,11 @@ pip install --upgrade pip
 pip install -e .
 ```
 
+Install directly from Git:
+```bash
+pip install "git+https://github.com/ktruongme/fin-whale-detection-das.git"
+```
+
 ## Notebooks
 Example workflows are in `notebooks/` (e.g., `dbscan.ipynb`, `ht.ipynb`, `tm.ipynb`, `yolo.ipynb`). Run after installing the package so imports resolve.
 
@@ -31,7 +36,10 @@ Example workflows are in `notebooks/` (e.g., `dbscan.ipynb`, `ht.ipynb`, `tm.ipy
 - Alternative public data: a related Svalbard DAS dataset (Rørstadbotnen et al., 2023) is available at https://doi.org/10.18710/Q8OSON. It is in MATLAB (.mat) format rather than HDF5, so you would need to adapt the loading code to use it.
 
 ## Models
-- A pretrained fin-whale detector is available at `models/fin_whale_detection_weights.pt`.
+- A pretrained fin-whale detector is bundled with the package and used by the
+  CLI by default.
+- You can override it with `--model-path` if you want to use different
+  weights.
 
 ## License
 This project is released under the MIT License. See `LICENSE` for details.

@@ -19,7 +19,7 @@ DEFAULT_TRAIN_HEIGHT = 640
 DEFAULT_TRAIN_PHYSICAL_WIDTH = 110_000.0
 DEFAULT_TRAIN_PHYSICAL_HEIGHT = 30.0
 DEFAULT_GRAYSCALE_BY_COLUMN = True
-DEFAULT_MODEL_PATH = "models/fin_whale_detection_weights.pt"
+DEFAULT_MODEL_PATH = None
 DEFAULT_YOLO_IOU = 0.25
 DEFAULT_HYPERBOLAS_NUM_POINTS = 10
 DEFAULT_HYPERBOLAS_BY_CHANNEL = True
@@ -74,8 +74,9 @@ def whales(
         DEFAULT_GRAYSCALE_BY_COLUMN,
         help="Apply grayscale transform independently per column",
     ),
-    model_path: str = typer.Option(
-        DEFAULT_MODEL_PATH, help="Path to the YOLO model weights"
+    model_path: str | None = typer.Option(
+        DEFAULT_MODEL_PATH,
+        help="Path to YOLO weights. Defaults to the packaged model.",
     ),
     yolo_iou: float = typer.Option(
         DEFAULT_YOLO_IOU, help="YOLO IOU threshold"
