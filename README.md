@@ -39,9 +39,9 @@ Example command with required arguments only:
 ```bash
 dasly whales \
   --exp-path /path/to/experiment \
-  --chunk-size 6 \
-  --chunk-stride 5 \
-  --db-table events_v1 \
+  --chunk-size 3 \
+  --chunk-stride 2 \
+  --db-table fin_whales \
   --connection-string "postgresql+psycopg2://user:pass@host:5432/db"
 ```
 
@@ -50,9 +50,9 @@ Example command with all CLI arguments:
 ```bash
 dasly whales \
   --exp-path /path/to/experiment \
-  --chunk-size 6 \
-  --chunk-stride 5 \
-  --db-table events_v1 \
+  --chunk-size 3 \
+  --chunk-stride 2 \
+  --db-table fin_whales \
   --connection-string "postgresql+psycopg2://user:pass@host:5432/db" \
   --n-start 5000 \
   --n-end 115000 \
