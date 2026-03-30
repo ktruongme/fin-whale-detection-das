@@ -34,7 +34,7 @@ pip install --force-reinstall --no-deps \
 ```
 
 ## CLI
-Example command with all required arguments:
+Example command with required arguments only:
 
 ```bash
 dasly whales \
@@ -45,7 +45,8 @@ dasly whales \
   --connection-string "postgresql+psycopg2://user:pass@host:5432/db"
 ```
 
-Optional channel bounds:
+Example command with all CLI arguments:
+
 ```bash
 dasly whales \
   --exp-path /path/to/experiment \
@@ -54,7 +55,21 @@ dasly whales \
   --db-table events_v1 \
   --connection-string "postgresql+psycopg2://user:pass@host:5432/db" \
   --n-start 5000 \
-  --n-end 115000
+  --n-end 115000 \
+  --f-min 15.0 \
+  --f-max 25.0 \
+  --v-min 1484.0 \
+  --v-max 14844.0 \
+  --rms-window-size 0.5 \
+  --train-width 640 \
+  --train-height 640 \
+  --train-physical-width 110000.0 \
+  --train-physical-height 30.0 \
+  --grayscale-by-column \
+  --model-path /path/to/model.pt \
+  --yolo-iou 0.25 \
+  --hyperbolas-num-points 10 \
+  --hyperbolas-by-channel
 ```
 
 ## Notebooks
