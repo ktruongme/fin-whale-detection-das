@@ -27,6 +27,36 @@ Install directly from Git:
 pip install "git+https://github.com/ktruongme/fin-whale-detection-das.git"
 ```
 
+Update an existing installation from Git:
+```bash
+pip install --force-reinstall --no-deps \
+  "git+https://github.com/ktruongme/fin-whale-detection-das.git"
+```
+
+## CLI
+Example command with all required arguments:
+
+```bash
+dasly whales \
+  --exp-path /path/to/experiment \
+  --chunk-size 6 \
+  --chunk-stride 5 \
+  --db-table events_v1 \
+  --connection-string "postgresql+psycopg2://user:pass@host:5432/db"
+```
+
+Optional channel bounds:
+```bash
+dasly whales \
+  --exp-path /path/to/experiment \
+  --chunk-size 6 \
+  --chunk-stride 5 \
+  --db-table events_v1 \
+  --connection-string "postgresql+psycopg2://user:pass@host:5432/db" \
+  --n-start 5000 \
+  --n-end 115000
+```
+
 ## Notebooks
 Example workflows are in `notebooks/` (e.g., `dbscan.ipynb`, `ht.ipynb`, `tm.ipynb`, `yolo.ipynb`). Run after installing the package so imports resolve.
 

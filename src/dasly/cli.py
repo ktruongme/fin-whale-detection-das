@@ -38,8 +38,14 @@ def whales(
     connection_string: str = typer.Option(
         ..., help="Database connection string"
     ),
-    n_start: int = typer.Option(..., help="Start channel index"),
-    n_end: int = typer.Option(..., help="End channel index"),
+    n_start: int | None = typer.Option(
+        None,
+        help="Start channel index. Defaults to the minimum available channel.",
+    ),
+    n_end: int | None = typer.Option(
+        None,
+        help="End channel index (exclusive). Defaults to the full range.",
+    ),
     f_min: float = typer.Option(
         DEFAULT_F_MIN, help="Minimum FK filter frequency in Hz"
     ),
