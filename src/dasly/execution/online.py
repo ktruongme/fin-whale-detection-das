@@ -97,7 +97,7 @@ class HDF5EventHandler(FileSystemEventHandler):
             '/dphi/' in event.dest_path and
             event.dest_path != self.last_created
         ):
-            time.sleep(5)
+            time.sleep(3)
             try:
                 wait_until_complete(event.dest_path)
             except TimeoutError as err:

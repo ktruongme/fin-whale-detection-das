@@ -9,6 +9,21 @@ logger = logging.getLogger(__name__)
 
 app = typer.Typer(help="Dasly CLI - Fin whale detection with DAS")
 
+DEFAULT_F_MIN = 15.0
+DEFAULT_F_MAX = 25.0
+DEFAULT_V_MIN = 1_484.0
+DEFAULT_V_MAX = 14_844.0
+DEFAULT_RMS_WINDOW_SIZE = 0.5
+DEFAULT_TRAIN_WIDTH = 640
+DEFAULT_TRAIN_HEIGHT = 640
+DEFAULT_TRAIN_PHYSICAL_WIDTH = 110_000.0
+DEFAULT_TRAIN_PHYSICAL_HEIGHT = 30.0
+DEFAULT_GRAYSCALE_BY_COLUMN = True
+DEFAULT_MODEL_PATH = "models/fin_whale_detection_weights.pt"
+DEFAULT_YOLO_IOU = 0.25
+DEFAULT_HYPERBOLAS_NUM_POINTS = 10
+DEFAULT_HYPERBOLAS_BY_CHANNEL = True
+
 
 @app.command()
 def whales(
@@ -23,6 +38,56 @@ def whales(
     connection_string: str = typer.Option(
         ..., help="Database connection string"
     ),
+    n_start: int = typer.Option(..., help="Start channel index"),
+    n_end: int = typer.Option(..., help="End channel index"),
+    f_min: float = typer.Option(
+        DEFAULT_F_MIN, help="Minimum FK filter frequency in Hz"
+    ),
+    f_max: float = typer.Option(
+        DEFAULT_F_MAX, help="Maximum FK filter frequency in Hz"
+    ),
+    v_min: float = typer.Option(
+        DEFAULT_V_MIN, help="Minimum FK filter velocity in m/s"
+    ),
+    v_max: float = typer.Option(
+        DEFAULT_V_MAX, help="Maximum FK filter velocity in m/s"
+    ),
+    rms_window_size: float = typer.Option(
+        DEFAULT_RMS_WINDOW_SIZE,
+        help="RMS window size in seconds",
+    ),
+    train_width: int = typer.Option(
+        DEFAULT_TRAIN_WIDTH, help="Training image width in pixels"
+    ),
+    train_height: int = typer.Option(
+        DEFAULT_TRAIN_HEIGHT, help="Training image height in pixels"
+    ),
+    train_physical_width: float = typer.Option(
+        DEFAULT_TRAIN_PHYSICAL_WIDTH,
+        help="Training image physical width",
+    ),
+    train_physical_height: float = typer.Option(
+        DEFAULT_TRAIN_PHYSICAL_HEIGHT,
+        help="Training image physical height",
+    ),
+    grayscale_by_column: bool = typer.Option(
+        DEFAULT_GRAYSCALE_BY_COLUMN,
+        help="Apply grayscale transform independently per column",
+    ),
+    model_path: str = typer.Option(
+        DEFAULT_MODEL_PATH, help="Path to the YOLO model weights"
+    ),
+    yolo_iou: float = typer.Option(
+        DEFAULT_YOLO_IOU, help="YOLO IOU threshold"
+    ),
+    hyperbolas_num_points: int = typer.Option(
+        DEFAULT_HYPERBOLAS_NUM_POINTS,
+        help="Number of points kept for hyperbola fitting",
+    ),
+    hyperbolas_by_channel: bool = typer.Option(
+        DEFAULT_HYPERBOLAS_BY_CHANNEL,
+        help="Select hyperbola fitting points by channel",
+    ),
 ):
     """Run the whale detection pipeline to process HDF5 files in real-time.
 
@@ -34,7 +99,7 @@ def whales(
           --exp-path /path/to/experiment \\
           --chunk-size 6 \\
           --chunk-stride 5 \\
-          --db-table events_v3 \\
+          --db-table events_v1 \\
           --connection-string "postgresql+psycopg2://user:pass@host:5432/db"
     """
     from watchdog.observers import Observer
@@ -57,6 +122,22 @@ def whales(
             file_paths=file_paths,
             db_table=db_table,
             connection_string=connection_string,
+            n_start=n_start,
+            n_end=n_end,
+            f_min=f_min,
+            f_max=f_max,
+            v_min=v_min,
+            v_max=v_max,
+            rms_window_size=rms_window_size,
+            train_width=train_width,
+            train_height=train_height,
+            train_physical_width=train_physical_width,
+            train_physical_height=train_physical_height,
+            grayscale_by_column=grayscale_by_column,
+            model_path=model_path,
+            yolo_iou=yolo_iou,
+            hyperbolas_num_points=hyperbolas_num_points,
+            hyperbolas_by_channel=hyperbolas_by_channel,
         )
 
     event_handler = HDF5EventHandler(

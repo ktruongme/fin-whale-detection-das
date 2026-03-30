@@ -3,7 +3,7 @@ derived from DAS (Distributed Acoustic Sensing) data. It includes methods
 for fitting hyperbolas using least squares and optimization techniques,
 as well as utilities for error calculation and hyperbola metrics derivation.
 """
-from typing import Callable, Tuple, Optional, List, TYPE_CHECKING
+from typing import Tuple, Optional, List
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
 
@@ -14,9 +14,6 @@ from ..filters.box_extract import (
     slice_by_normalized_coords,
     extract_binary_coords
 )
-
-if TYPE_CHECKING:
-    from ..core.dasarray import DASArray
 
 # Constants for fallback values
 FALLBACK_A_GUESS = 10
