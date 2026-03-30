@@ -14,12 +14,6 @@ DEFAULT_F_MAX = 25.0
 DEFAULT_V_MIN = 1_484.0
 DEFAULT_V_MAX = 14_844.0
 DEFAULT_RMS_WINDOW_SIZE = 0.5
-DEFAULT_TRAIN_WIDTH = 640
-DEFAULT_TRAIN_HEIGHT = 640
-DEFAULT_TRAIN_PHYSICAL_WIDTH = 110_000.0
-DEFAULT_TRAIN_PHYSICAL_HEIGHT = 30.0
-DEFAULT_GRAYSCALE_BY_COLUMN = True
-DEFAULT_MODEL_PATH = None
 DEFAULT_YOLO_IOU = 0.25
 DEFAULT_HYPERBOLAS_NUM_POINTS = 10
 DEFAULT_HYPERBOLAS_BY_CHANNEL = True
@@ -62,28 +56,6 @@ def whales(
         DEFAULT_RMS_WINDOW_SIZE,
         help="RMS window size in seconds",
     ),
-    train_width: int = typer.Option(
-        DEFAULT_TRAIN_WIDTH, help="Training image width in pixels"
-    ),
-    train_height: int = typer.Option(
-        DEFAULT_TRAIN_HEIGHT, help="Training image height in pixels"
-    ),
-    train_physical_width: float = typer.Option(
-        DEFAULT_TRAIN_PHYSICAL_WIDTH,
-        help="Training image physical width",
-    ),
-    train_physical_height: float = typer.Option(
-        DEFAULT_TRAIN_PHYSICAL_HEIGHT,
-        help="Training image physical height",
-    ),
-    grayscale_by_column: bool = typer.Option(
-        DEFAULT_GRAYSCALE_BY_COLUMN,
-        help="Apply grayscale transform independently per column",
-    ),
-    model_path: str | None = typer.Option(
-        DEFAULT_MODEL_PATH,
-        help="Path to YOLO weights. Defaults to the packaged model.",
-    ),
     yolo_iou: float = typer.Option(
         DEFAULT_YOLO_IOU, help="YOLO IOU threshold"
     ),
@@ -112,7 +84,7 @@ def whales(
     from watchdog.observers import Observer
 
     from dasly.execution.online import HDF5EventHandler
-    from dasly.execution.svalbard_yolo import process_hdf5
+    from dasly.execution.whale_detection import process_hdf5
     from dasly.loader.fsearcher import get_recent_hdf5_file_paths
 
     def _process(file_path: str):
@@ -136,12 +108,6 @@ def whales(
             v_min=v_min,
             v_max=v_max,
             rms_window_size=rms_window_size,
-            train_width=train_width,
-            train_height=train_height,
-            train_physical_width=train_physical_width,
-            train_physical_height=train_physical_height,
-            grayscale_by_column=grayscale_by_column,
-            model_path=model_path,
             yolo_iou=yolo_iou,
             hyperbolas_num_points=hyperbolas_num_points,
             hyperbolas_by_channel=hyperbolas_by_channel,

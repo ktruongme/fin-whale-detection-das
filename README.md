@@ -61,12 +61,6 @@ dasly whales \
   --v-min 1484.0 \
   --v-max 14844.0 \
   --rms-window-size 0.5 \
-  --train-width 640 \
-  --train-height 640 \
-  --train-physical-width 110000.0 \
-  --train-physical-height 30.0 \
-  --grayscale-by-column \
-  --model-path /path/to/model.pt \
   --yolo-iou 0.25 \
   --hyperbolas-num-points 10 \
   --hyperbolas-by-channel
@@ -82,9 +76,9 @@ Example workflows are in `notebooks/` (e.g., `dbscan.ipynb`, `ht.ipynb`, `tm.ipy
 
 ## Models
 - A pretrained fin-whale detector is bundled with the package and used by the
-  CLI by default.
-- You can override it with `--model-path` if you want to use different
-  weights.
+  CLI.
+- The preprocessing and training-geometry parameters used by the detector are
+  fixed to the packaged defaults.
 
 ## License
 This project is released under the MIT License. See `LICENSE` for details.
