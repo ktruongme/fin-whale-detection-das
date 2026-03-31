@@ -7,7 +7,10 @@ import typer
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
-app = typer.Typer(help="Dasly CLI - Fin whale detection with DAS")
+app = typer.Typer(
+    help="Dasly CLI - Fin whale detection with DAS",
+    no_args_is_help=True,
+)
 
 DEFAULT_F_MIN = 15.0
 DEFAULT_F_MAX = 25.0
@@ -17,6 +20,11 @@ DEFAULT_RMS_WINDOW_SIZE = 0.5
 DEFAULT_YOLO_IOU = 0.25
 DEFAULT_HYPERBOLAS_NUM_POINTS = 10
 DEFAULT_HYPERBOLAS_BY_CHANNEL = True
+
+
+@app.callback()
+def main() -> None:
+    """Dasly CLI commands."""
 
 
 @app.command()
