@@ -1,9 +1,13 @@
+import logging
+import time
+
 import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.types import Float, Integer, DateTime, String
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 from pandas.api.types import (
     is_datetime64_any_dtype,
     is_datetime64tz_dtype,
@@ -11,6 +15,12 @@ from pandas.api.types import (
     is_integer_dtype,
     is_string_dtype,
 )
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_DB_CONNECT_TIMEOUT_SECONDS = 10
+DEFAULT_DB_MAX_RETRIES = 3
+DEFAULT_DB_RETRY_DELAY_SECONDS = 5.0
 
 
 def denormalize_boxesn(
@@ -313,52 +323,83 @@ def build_box_df(
 def save_to_db(
     df: pd.DataFrame,
     table_name: str,
-    connection_string: str
+    connection_string: str,
+    *,
+    connect_timeout: int = DEFAULT_DB_CONNECT_TIMEOUT_SECONDS,
+    max_retries: int = DEFAULT_DB_MAX_RETRIES,
+    retry_delay: float = DEFAULT_DB_RETRY_DELAY_SECONDS,
 ) -> None:
     """Save DataFrame to a PostgreSQL database. If the table does not exist,
     it will be created with the appropriate columns and types."""
     if df.empty:
-        print("DataFrame is empty. No data to save.")
+        logger.info("DataFrame is empty. No data to save.")
         return
 
-    engine = create_engine(connection_string)
-
-    inspector = inspect(engine)
-    table_exists = inspector.has_table(table_name)
-    if table_exists:
-        existing_columns = [
-            col["name"] for col in inspector.get_columns(table_name)
-        ]
-        df = _normalize_columns_for_table(df, existing_columns)
-    else:
-        df = _normalize_columns_for_table(df, None)
-
-    dtype_mapping = auto_dtype_mapping(df)
-
-    if not table_exists:
-        print(f"Table '{table_name}' does not exist. Creating it now.")
-        create_table_with_triggers(
-            table_name=table_name, engine=engine, dtype_mapping=dtype_mapping)
-    else:
-        _ensure_table_has_columns(
-            table_name=table_name,
-            engine=engine,
-            dtype_mapping=dtype_mapping,
-            existing_columns=existing_columns,
+    for attempt in range(1, max_retries + 1):
+        engine = create_engine(
+            connection_string,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            connect_args={"connect_timeout": connect_timeout},
         )
-
-    sqlalchemy_dtype_mapping = {}
-    for col, type_def in dtype_mapping.items():
         try:
-            sqlalchemy_dtype_mapping[col] = type_def()
-        except TypeError:
-            sqlalchemy_dtype_mapping[col] = type_def
-    df.to_sql(
-        name=table_name,
-        con=engine,
-        if_exists='append',
-        index=False,
-        dtype=sqlalchemy_dtype_mapping
-    )
+            inspector = inspect(engine)
+            table_exists = inspector.has_table(table_name)
+            if table_exists:
+                existing_columns = [
+                    col["name"] for col in inspector.get_columns(table_name)
+                ]
+                normalized_df = _normalize_columns_for_table(
+                    df, existing_columns
+                )
+            else:
+                normalized_df = _normalize_columns_for_table(df, None)
 
-    engine.dispose()
+            dtype_mapping = auto_dtype_mapping(normalized_df)
+
+            if not table_exists:
+                logger.info(
+                    "Table '%s' does not exist. Creating it now.",
+                    table_name,
+                )
+                create_table_with_triggers(
+                    table_name=table_name,
+                    engine=engine,
+                    dtype_mapping=dtype_mapping,
+                )
+            else:
+                _ensure_table_has_columns(
+                    table_name=table_name,
+                    engine=engine,
+                    dtype_mapping=dtype_mapping,
+                    existing_columns=existing_columns,
+                )
+
+            sqlalchemy_dtype_mapping = {}
+            for col, type_def in dtype_mapping.items():
+                try:
+                    sqlalchemy_dtype_mapping[col] = type_def()
+                except TypeError:
+                    sqlalchemy_dtype_mapping[col] = type_def
+            normalized_df.to_sql(
+                name=table_name,
+                con=engine,
+                if_exists='append',
+                index=False,
+                dtype=sqlalchemy_dtype_mapping
+            )
+            return
+        except OperationalError:
+            if attempt == max_retries:
+                raise
+            logger.warning(
+                "Database write attempt %s/%s failed for table '%s'. "
+                "Retrying in %.1fs.",
+                attempt,
+                max_retries,
+                table_name,
+                retry_delay,
+            )
+            time.sleep(retry_delay)
+        finally:
+            engine.dispose()

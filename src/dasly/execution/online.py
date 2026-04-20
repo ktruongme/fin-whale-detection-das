@@ -74,6 +74,19 @@ class HDF5EventHandler(FileSystemEventHandler):
         self.last_created = None
         self.process_hdf5 = process_hdf5
 
+    def _run_processing(self, file_path: str) -> None:
+        """Run the processing callback without killing the watcher thread."""
+        logger.info('Running dasly...')
+        try:
+            self.process_hdf5(file_path)
+        except Exception:
+            logger.exception(
+                'Processing failed for %s. Watching will continue.',
+                file_path,
+            )
+        finally:
+            self.event_count = 0
+
     def on_created(self, event) -> None:
         """Event handler for file creation (for testing)."""
         if (
@@ -86,9 +99,7 @@ class HDF5EventHandler(FileSystemEventHandler):
             self.last_created = event.src_path
             self.event_count += 1
             if self.event_count >= self.event_thresh:
-                logger.info('Running dasly...')
-                self.process_hdf5(event.src_path)
-                self.event_count = 0
+                self._run_processing(event.src_path)
 
     def on_moved(self, event) -> None:
         """Event handler for file moving (production use)."""
@@ -108,6 +119,4 @@ class HDF5EventHandler(FileSystemEventHandler):
             self.last_created = event.dest_path
             self.event_count += 1
             if self.event_count >= self.event_thresh:
-                logger.info('Running dasly...')
-                self.process_hdf5(event.dest_path)
-                self.event_count = 0
+                self._run_processing(event.dest_path)
