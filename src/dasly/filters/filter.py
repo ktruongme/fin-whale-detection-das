@@ -23,6 +23,7 @@ import copy  # noqa: E402
 import numpy as np  # noqa: E402
 from scipy.fft import (fft, ifft, fftshift, ifftshift, fftfreq,  # noqa: E402
                        rfft, irfft, rfftfreq)
+from scipy.signal import butter, sosfilt  # noqa: E402
 import cv2  # noqa: E402
 from numba import njit, prange  # noqa: E402
 
@@ -31,6 +32,41 @@ os.environ.setdefault('OMP_MAX_ACTIVE_LEVELS', '1')
 
 if TYPE_CHECKING:
     from ..core.dasarray import DASArray
+
+
+def bandpass_filter(
+    data: np.ndarray[float],
+    sampling_rate: float,
+    low_freq: float,
+    high_freq: float,
+    order: int = 4
+) -> np.ndarray[float]:
+    """Apply a Butterworth band-pass filter to the signal.
+
+    Args:
+        data (np.ndarray[float]): Input data.
+        sampling_rate (float): Sampling rate of the input data.
+        low_freq (float): Lower bound frequency.
+        high_freq (float): Upper bound frequency.
+        order (int, optional): Order of IIR filter. Defaults to 4.
+
+    Returns:
+        np.ndarray[float]: Filtered signal.
+    """
+    nyquist = 0.5 * sampling_rate
+    if not (0 < low_freq < high_freq < nyquist):
+        raise ValueError("Invalid frequency bounds. Ensure 0 < low_freq < "
+                         + f"high_freq < nyquist ({nyquist} Hz).")
+    normalized_low = low_freq / nyquist
+    normalized_high = high_freq / nyquist
+    sos = butter(
+        N=order,
+        Wn=[normalized_low, normalized_high],
+        btype='band',
+        output='sos'
+    )
+    signal_bandpass = sosfilt(sos, data, axis=0)
+    return signal_bandpass
 
 
 def binary_transform(
@@ -315,6 +351,23 @@ def rms(data: np.ndarray, window_size: int) -> np.ndarray:
 
 class DASFilter:
     """Mixin class that provides filtering methods for DAS data."""
+
+    def bandpass_filter(
+        self,
+        low_freq: float,
+        high_freq: float,
+        order: int = 4
+    ) -> 'DASArray':
+        filtered_data = bandpass_filter(
+            data=self,
+            sampling_rate=1 / self.meta.dt,
+            low_freq=low_freq,
+            high_freq=high_freq,
+            order=order
+        )
+        result = self.__class__(filtered_data)
+        result.meta = copy.deepcopy(self.meta)
+        return result
 
     def binary_transform(
         self,
