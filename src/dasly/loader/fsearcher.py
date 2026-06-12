@@ -1,7 +1,9 @@
 """Module for searching and collecting HDF5 file paths."""
 
 import os
-from datetime import datetime, timedelta
+import re
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 from dataclasses import dataclass
 
 import h5py
@@ -145,6 +147,26 @@ def get_hdf5_header(file_path: str) -> HDF5HeaderInfo:
         )
 
 
+def get_all_hdf5_file_paths(directory: str) -> list[str]:
+    """Get all HDF5 files in a directory and its subdirectories.
+
+    Args:
+        directory (str): The directory to search for HDF5 files.
+
+    Returns:
+        list[str]: A list of HDF5 file paths.
+    """
+    hdf5_files = []
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if file.endswith('.h5') or file.endswith('.hdf5'):
+                hdf5_files.append(os.path.join(root, file))
+
+    # Sort the list of HDF5 files in reverse chronological order
+    hdf5_files.sort()
+    return hdf5_files
+
+
 def _is_time_within_gap(
     last_dt: datetime,
     current_dt: datetime,
@@ -217,3 +239,293 @@ def get_recent_hdf5_file_paths(file_path: str, num_file: int) -> list[str]:
                 break
 
     return collected_files[::-1]
+
+
+def _normalize_iso_datetime_string(dt_str: str) -> str:
+    """Normalize ISO strings for datetime.fromisoformat."""
+    if dt_str.endswith('Z'):
+        dt_str = dt_str[:-1] + '+00:00'
+    match = re.match(
+        r'^(?P<prefix>.*\d)(?P<fraction>\.\d+)'
+        r'(?P<suffix>(?:Z|[+-]\d{2}:?\d{2})?)$',
+        dt_str
+    )
+    if not match:
+        return dt_str
+    fraction = match.group('fraction')[1:]
+    padded_fraction = (fraction + '000000')[:6]
+    suffix = match.group('suffix') or ''
+    return f"{match.group('prefix')}.{padded_fraction}{suffix}"
+
+
+def _parse_datetime_str(dt_str: str) -> datetime:
+    """Parse date string supporting ISO and 'YYYYMMDD HHMMSS[.ffffff]'
+    formats."""
+    if dt_str is None:
+        raise ValueError("Datetime string cannot be None.")
+    normalized = _normalize_iso_datetime_string(dt_str.strip())
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError:
+        match = re.fullmatch(
+            r'(?P<date>\d{8}) (?P<time>\d{6})(?P<fraction>\.\d+)?',
+            normalized
+        )
+        if not match:
+            raise ValueError(
+                "Invalid datetime format. Expected ISO 8601 or "
+                "'YYYYMMDD HHMMSS[.ffffff]'."
+            ) from None
+        dt = datetime.strptime(
+            f"{match.group('date')}{match.group('time')}",
+            "%Y%m%d%H%M%S"
+        )
+        fraction = match.group('fraction')
+        if fraction:
+            microsecond = int((fraction[1:] + '000000')[:6])
+            dt = dt.replace(microsecond=microsecond)
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+    return dt
+
+
+def _calculate_time_range(
+    start: Optional[str] = None,
+    duration: Optional[float] = None,
+    end: Optional[str] = None
+) -> tuple[datetime, datetime]:
+    """Validates and calculates the start and end datetime objects based on
+    provided arguments.
+
+    Args:
+        start (Optional[str]): The start time in the format 'YYYYMMDD HHMMSS'
+            or other ISO 8601 formats. Default is None.
+        duration (Optional[float]): The duration in seconds. Default is None.
+        end (Optional[str]): The end time in the format 'YYYYMMDD HHMMSS' or
+            other ISO 8601 formats. Default is None.
+
+    Returns:
+        tuple[datetime, datetime]: A tuple containing the start and end
+            datetime objects.
+    """
+    provided_args = [start, end, duration]
+    if sum(arg is not None for arg in provided_args) != 2:
+        raise ValueError(
+            "Exactly two of 'start', 'end', or 'duration' must be provided."
+        )
+
+    if start and end:
+        start_dt = _parse_datetime_str(start)
+        end_dt = _parse_datetime_str(end)
+    elif start and duration:
+        start_dt = _parse_datetime_str(start)
+        end_dt = start_dt + timedelta(seconds=duration)
+    else:  # end and duration
+        end_dt = _parse_datetime_str(end)
+        start_dt = end_dt - timedelta(seconds=duration)
+
+    if start_dt >= end_dt:
+        raise ValueError("Start time must be before end time.")
+
+    return start_dt, end_dt
+
+
+def _collect_files_in_range(
+    exp_path: str,
+    start_dt: datetime,
+    end_dt: datetime
+) -> list[str]:
+    """Collects HDF5 file paths within a specified time range.
+
+    This function searches for and retrieves all HDF5 files from the given
+    experiment path (`exp_path`) that fall within the specified start
+    (`start_dt`) and end (`end_dt`) datetime range. The first file corresponds
+    to `start_dt` or later (inclusive), and the last file is the closest one
+    before `end_dt` (exclusive).
+
+    Args:
+        exp_path (str): The experiment path.
+        start_dt (datetime): The start datetime.
+        end_dt (datetime): The end datetime.
+
+    Returns:
+        list[str]: A list of hdf5 file paths.
+    """
+    collected_files = []
+    # include the preceding file to cover data before start_dt
+    coverage = timedelta(seconds=10)
+    adjusted_start_dt = start_dt - coverage
+
+    # Collect dates to cover
+    date_list = []
+    current_date = adjusted_start_dt.date()
+    end_date = end_dt.date()
+    while current_date <= end_date:
+        date_list.append(current_date.strftime('%Y%m%d'))
+        current_date += timedelta(days=1)
+
+    # Loop through the dates
+    for date_str in date_list:
+
+        # Skip if the date directory does not exist
+        date_dir = os.path.join(exp_path, date_str, 'dphi')
+        if not os.path.isdir(date_dir):
+            continue
+
+        # Get the list of file times in the date directory
+        file_times = _get_file_times(date_dir)
+
+        for hhmmss in file_times:
+
+            # Get the datetime object of the file
+            dt_format = '%Y%m%d %H%M%S'
+            file_dt_str = f"{date_str} {hhmmss}"
+            file_dt = datetime.strptime(file_dt_str, dt_format).replace(
+                tzinfo=timezone.utc
+            )
+
+            # Include files whose nominal time is between adjusted_start_dt
+            # (inclusive) and end_dt (exclusive)
+            if adjusted_start_dt <= file_dt < end_dt:
+                file_path = os.path.join(date_dir, f"{hhmmss}.hdf5")
+                collected_files.append(file_path)
+
+    # Sort collected files in chronological order
+    collected_files.sort()
+
+    return collected_files
+
+
+def parse_file_datetime(file_path: str) -> datetime:
+    """Extracts and returns the datetime from a file path.
+
+    The file path is expected to have a date folder in the format 'YYYYMMDD'
+    and a file name in the format 'HHMMSS.hdf5'. For example:
+    '/Volumes/LaCie/Monaco/20250129/dphi/000001.hdf5'. In this case, the
+    function extracts '20250129' from the directory and '000001' from the file
+    name and returns the corresponding datetime.
+
+    Args:
+        file_path (str): The file path string.
+
+    Returns:
+        datetime: The datetime extracted from the file path.
+    """
+    # Split the file path into parts
+    parts = file_path.split(os.sep)
+    # Assuming the structure is fixed and the date folder is at index 4:
+    # Example: ['', 'Volumes', 'LaCie', 'Monaco', '20250129', 'dphi',
+    # '000001.hdf5']
+
+    date_str = parts[-3]  # The date part (e.g., '20250129')
+    # Extract the time part from the file name (e.g., '000001' from
+    # '000001.hdf5')
+    base_name = os.path.basename(file_path)
+    time_str, ext = os.path.splitext(base_name)
+    dt_str = f"{date_str} {time_str}"
+
+    # Parse the combined datetime string.
+    return datetime.strptime(dt_str, "%Y%m%d %H%M%S")
+
+
+def get_files_from_datetime(
+    file_paths: list[str],
+    start_dt_str: str,
+    k: int
+) -> list[str]:
+    """Retrieves k file paths with datetime values greater than or equal to the
+    given start datetime.
+
+    The function first converts each file path into a datetime using
+    `parse_file_datetime`, sorts the file paths by this datetime, and then
+    selects the first k file paths where the file's datetime is on or after the
+    start datetime.
+
+    Args:
+        file_paths (list[str]): A list of file path strings.
+        start_dt_str (str): The start datetime as a string in the format
+            'YYYYMMDD HHMMSS'.
+        k (int): The number of file paths to retrieve.
+
+    Returns:
+        list[str]: A list of file paths meeting the datetime criteria.
+
+    Raises:
+        ValueError: If the start datetime string is not in the correct format.
+    """
+    try:
+        start_dt = datetime.strptime(start_dt_str, "%Y%m%d %H%M%S")
+    except ValueError as ve:
+        raise ValueError(
+            "start_dt_str must be in 'YYYYMMDD HHMMSS' format.") from ve
+
+    # Create a list of tuples (file_datetime, file_path)
+    file_dt_pairs = []
+    for path in file_paths:
+        try:
+            file_dt = parse_file_datetime(path)
+            file_dt_pairs.append((file_dt, path))
+        except ValueError:
+            # Optionally, you can log or handle files that do not match the
+            # expected format.
+            continue
+
+    # Sort the list by the datetime value.
+    file_dt_pairs.sort(key=lambda x: x[0])
+
+    # Retrieve the first k file paths where the file datetime is >= start_dt.
+    selected_files = [path for dt, path in file_dt_pairs if dt >= start_dt]
+    return selected_files[:k]
+
+
+def get_hdf5_file_paths_range(
+    exp_path: str,
+    start: Optional[str] = None,
+    duration: Optional[float] = None,
+    end: Optional[str] = None
+) -> list[str]:
+    """Collects HDF5 file paths within a specified time range.
+
+    This function searches for and retrieves all HDF5 files from the given
+    experiment path (`exp_path`) that fall within the specified start
+    (`start_dt`) and end (`end_dt`) datetime range. The first file corresponds
+    to `start_dt` or later, and the last file is the closest one before
+    `end_dt`. This function also includes the previous file if the start time
+    is not an integer, i.e. the file does not start at exactly second.
+
+    Args:
+        exp_path (str): The experiment path.
+        start (Optional[str]): The start time in the format 'YYYYMMDD HHMMSS'
+            or other ISO 8601 formats. Default is None.
+        duration (Optional[float]): The duration in seconds. Default is None.
+        end (Optional[str]): The end time in the format 'YYYYMMDD HHMMSS' or
+            other ISO 8601 formats. This is exclusive. Default is None.
+
+    Returns:
+        list[str]: A list of hdf5 file.
+    """
+    # Validate and calculate start_dt and end_dt
+    start_dt, end_dt = _calculate_time_range(start, duration, end)
+
+    # Collect files in the specified time range
+    file_paths = _collect_files_in_range(
+        exp_path, start_dt, end_dt
+    )
+
+    if not file_paths:
+        return []
+
+    # Check if the first file's t_start is not integer and if the second file
+    # matches the start time
+    if len(file_paths) > 1:
+        start_time = start_dt.strftime("%H%M%S")
+        second_file_time = os.path.splitext(os.path.basename(file_paths[1]))[0]
+        header_info = get_hdf5_header(file_paths[0])
+        if (second_file_time == start_time and
+                float(header_info.t_start).is_integer()):
+            file_paths = file_paths[1:]
+    return file_paths

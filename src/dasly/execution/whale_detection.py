@@ -34,7 +34,7 @@ def process_hdf5(
 ) -> None:
     das_rms = (
         DASArray()
-        .load(file_paths=file_paths, n_start=n_start, n_end=n_end)
+        .load(file_paths=file_paths, n_start=n_start, n_end=n_end, scale=True)
         .fk_filter_real(f_min=f_min, f_max=f_max, v_min=v_min, v_max=v_max)
         .rms(window_size_second=rms_window_size)
     )
