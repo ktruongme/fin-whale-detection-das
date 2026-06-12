@@ -349,6 +349,18 @@ def rms(data: np.ndarray, window_size: int) -> np.ndarray:
     return out
 
 
+def absolute(data: np.ndarray[float]) -> np.ndarray[float]:
+    """Compute the element-wise absolute value of the data.
+
+    Args:
+        data (np.ndarray[float]): Input data.
+
+    Returns:
+        np.ndarray[float]: Absolute value of the data.
+    """
+    return np.absolute(data)
+
+
 class DASFilter:
     """Mixin class that provides filtering methods for DAS data."""
 
@@ -366,6 +378,12 @@ class DASFilter:
             order=order
         )
         result = self.__class__(filtered_data)
+        result.meta = copy.deepcopy(self.meta)
+        return result
+
+    def absolute(self) -> 'DASArray':
+        abs_data = absolute(data=self)
+        result = self.__class__(abs_data)
         result.meta = copy.deepcopy(self.meta)
         return result
 
